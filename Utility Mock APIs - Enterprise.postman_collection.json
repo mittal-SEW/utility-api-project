@@ -1,0 +1,292 @@
+{
+  "info": {
+    "_postman_id": "473828a5-6cc3-45b4-81cb-49c85b936ce5",
+    "name": "Utility Mock APIs - Enterprise",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "42629801",
+    "_collection_link": "https://go.postman.co/collection/42629801-473828a5-6cc3-45b4-81cb-49c85b936ce5?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"john.doe@test.com\",\n  \"password\": \"Password@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"jwt_refresh_token_mock\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Electricity",
+      "item": [
+        {
+          "name": "Get Account",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/utility/electricity/account",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "utility",
+                "electricity",
+                "account"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Bills",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/utility/electricity/bills",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "utility",
+                "electricity",
+                "bills"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Meter Reading",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountId\": \"ELEC-100234\",\n  \"currentReading\": 14562\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/utility/electricity/meter-reading",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "utility",
+                "electricity",
+                "meter-reading"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "Pay Bill",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountId\": \"ELEC-100234\",\n  \"billId\": \"BILL-2025-11\",\n  \"amount\": 126.45,\n  \"method\": \"credit_card\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/utility/payment/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "utility",
+                "payment",
+                "pay"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Retry Payment",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionId\": \"TXN-839182\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/utility/payment/retry",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "utility",
+                "payment",
+                "retry"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Payment History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/utility/payment/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "utility",
+                "payment",
+                "history"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Error Scenarios",
+      "item": [
+        {
+          "name": "Payment Timeout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/utility/payment/pay?error=timeout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "utility",
+                "payment",
+                "pay"
+              ],
+              "query": [
+                {
+                  "key": "error",
+                  "value": "timeout"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Payment Declined",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/utility/payment/pay?error=402",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "utility",
+                "payment",
+                "pay"
+              ],
+              "query": [
+                {
+                  "key": "error",
+                  "value": "402"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Server Error",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/utility/electricity/bills?error=500",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "utility",
+                "electricity",
+                "bills"
+              ],
+              "query": [
+                {
+                  "key": "error",
+                  "value": "500"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://YOUR_ID.mockapi.dog"
+    }
+  ]
+}
