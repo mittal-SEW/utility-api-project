@@ -14,34 +14,52 @@ const Login = () => {
     }
 
     return (
-        <div>
-            <h2>Login</h2>
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '300px', margin: '0 auto' }}>
-                <div>
-                    <label>Email:</label>
-                    <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        style={{ width: '100%', padding: '0.5rem' }}
-                    />
-                </div>
-                <div>
-                    <label>Password:</label>
-                    <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        style={{ width: '100%', padding: '0.5rem' }}
-                    />
-                </div>
-                <button type="submit" disabled={status === 'loading'}>
-                    {status === 'loading' ? 'Logging in...' : 'Login'}
-                </button>
-                {error && <p style={{ color: 'red' }}>{error}</p>}
-            </form>
+        <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--background)' }}>
+            <div className="card" style={{ width: '100%', maxWidth: '400px', padding: '2.5rem' }}>
+                <h2 style={{ textAlign: 'center', marginBottom: '0.5rem', color: 'var(--primary-dark)' }}>Smart CX</h2>
+                <p style={{ textAlign: 'center', marginBottom: '2rem' }}>Sign in to manage your account</p>
+
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', textAlign: 'left' }}>
+                        <label style={{ fontSize: '0.9rem', fontWeight: 500 }}>Email Address</label>
+                        <input
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                            placeholder="name@example.com"
+                            style={{
+                                width: '100%', padding: '0.75rem', borderRadius: '8px',
+                                border: '1px solid var(--border)', fontFamily: 'inherit'
+                            }}
+                        />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', textAlign: 'left' }}>
+                        <label style={{ fontSize: '0.9rem', fontWeight: 500 }}>Password</label>
+                        <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            placeholder="Enter your password"
+                            style={{
+                                width: '100%', padding: '0.75rem', borderRadius: '8px',
+                                border: '1px solid var(--border)', fontFamily: 'inherit'
+                            }}
+                        />
+                    </div>
+
+                    <button type="submit" className="btn btn-primary" disabled={status === 'loading'} style={{ marginTop: '0.5rem', padding: '0.75rem' }}>
+                        {status === 'loading' ? 'Signing in...' : 'Sign In'}
+                    </button>
+
+                    {error && (
+                        <div style={{ color: 'var(--danger)', fontSize: '0.9rem', textAlign: 'center', marginTop: '0.5rem' }}>
+                            {typeof error === 'string' ? error : error.message || 'Login failed'}
+                        </div>
+                    )}
+                </form>
+            </div>
         </div>
     )
 }
