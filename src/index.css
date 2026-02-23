@@ -1,3 +1,9 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 :root {
   /* Color Palette */
   --primary: #0056b3;
@@ -13,7 +19,7 @@
   --danger: #dc3545;
 
   /* Typography */
-  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
   line-height: 1.5;
   font-weight: 400;
   color: var(--text-main);
@@ -173,4 +179,14 @@ button:focus-visible {
   flex: 1;
   padding: 2rem;
   overflow-y: auto;
+}
+
+.main-footer {
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  background-color: var(--surface);
+  flex-shrink: 0;
 }

@@ -48,6 +48,9 @@ const MainLayout = () => {
                 <main className="main-content">
                     <Outlet />
                 </main>
+                <footer className="main-footer">
+                    &copy; {new Date().getFullYear()} Smart CX. All rights reserved.
+                </footer>
             </div>
         </div>
     );
