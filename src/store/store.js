@@ -1,18 +1,20 @@
 import { configureStore } from '@reduxjs/toolkit'
 import { persistStore, persistReducer } from 'redux-persist'
-import storage from 'redux-persist/lib/storage' // defaults to localStorage for web
+import storageSession from 'redux-persist/lib/storage/session' // uses sessionStorage
 import authReducer from './slices/authSlice'
+import accountReducer from './slices/accountSlice'
 
 const persistConfig = {
     key: 'root',
-    storage,
+    storage: storageSession,
 }
 
-const persistedReducer = persistReducer(persistConfig, authReducer)
+const persistedAuthReducer = persistReducer(persistConfig, authReducer)
 
 export const store = configureStore({
     reducer: {
-        auth: persistedReducer,
+        auth: persistedAuthReducer,
+        account: accountReducer,
     },
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware({

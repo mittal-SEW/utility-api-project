@@ -2,6 +2,8 @@ import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { logout } from '../store/slices/authSlice';
+import { clearAccount } from '../store/slices/accountSlice';
+import SessionTimeout from './SessionTimeout';
 
 const MainLayout = () => {
     const location = useLocation();
@@ -9,6 +11,7 @@ const MainLayout = () => {
 
     const handleLogout = () => {
         dispatch(logout());
+        dispatch(clearAccount());
     };
 
     const navItems = [
@@ -52,6 +55,7 @@ const MainLayout = () => {
                     &copy; {new Date().getFullYear()} Smart CX. All rights reserved.
                 </footer>
             </div>
+            <SessionTimeout />
         </div>
     );
 };

@@ -1,26 +1,18 @@
-import { useEffect, useState } from 'react'
-import api from '../api/api'
+import { useEffect } from 'react'
+import { useSelector, useDispatch } from 'react-redux'
+import { fetchAccount } from '../store/slices/accountSlice'
 
 const Profile = () => {
-    const [customer, setCustomer] = useState(null)
-    const [loading, setLoading] = useState(true)
+    const dispatch = useDispatch()
+    const { customer, fetchStatus } = useSelector((state) => state.account)
 
     useEffect(() => {
-        const fetchProfile = async () => {
-            try {
-                // The account endpoint returns customer info in the mock
-                const response = await api.get('/utility/electricity/account')
-                setCustomer(response.data.customer)
-            } catch (error) {
-                console.error('Failed to fetch profile', error)
-            } finally {
-                setLoading(false)
-            }
+        if (fetchStatus === 'idle') {
+            dispatch(fetchAccount())
         }
-        fetchProfile()
-    }, [])
+    }, [fetchStatus, dispatch])
 
-    if (loading) return <div>Loading profile information...</div>
+    if (fetchStatus === 'loading') return <div>Loading profile information...</div>
     if (!customer) return <div>Error loading profile.</div>
 
     return (
