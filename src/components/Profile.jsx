@@ -4,7 +4,7 @@ import { fetchAccount } from '../store/slices/accountSlice'
 
 const Profile = () => {
     const dispatch = useDispatch()
-    const { customer, fetchStatus } = useSelector((state) => state.account)
+    const { customer, serviceAddress, fetchStatus } = useSelector((state) => state.account)
 
     useEffect(() => {
         if (fetchStatus === 'idle') {
@@ -41,6 +41,27 @@ const Profile = () => {
                     <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr' }}>
                         <span style={{ color: 'var(--text-muted)' }}>Phone</span>
                         <strong>{customer.phone}</strong>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Service {Array.isArray(serviceAddress) && serviceAddress.length > 1 ? 'Addresses' : 'Address'}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            {Array.isArray(serviceAddress) ? (
+                                serviceAddress.map((addr, idx) => (
+                                    <div key={idx}>
+                                        <strong>{addr?.street}</strong>
+                                        <div style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginTop: '0.1rem' }}>{addr?.city}, {addr?.state} {addr?.zip}</div>
+                                    </div>
+                                ))
+                            ) : serviceAddress ? (
+                                <div>
+                                    <strong>{serviceAddress?.street}</strong>
+                                    <div style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginTop: '0.1rem' }}>{serviceAddress?.city}, {serviceAddress?.state} {serviceAddress?.zip}</div>
+                                </div>
+                            ) : (
+                                <strong>N/A</strong>
+                            )}
+                        </div>
                     </div>
                 </div>
 

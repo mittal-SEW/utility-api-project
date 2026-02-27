@@ -1,0 +1,424 @@
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { fetchPaymentMethods, processPayment, resetPaymentState } from '../store/slices/paymentSlice';
+import { fetchAccount } from '../store/slices/accountSlice';
+import { FaPaypal, FaApplePay, FaGooglePay, FaAmazonPay, FaCreditCard, FaUniversity, FaGlobe, FaMapMarkerAlt, FaDollarSign, FaCalendarAlt, FaReceipt, FaCheck, FaInfoCircle } from 'react-icons/fa';
+import { SiVisa, SiAmericanexpress, SiDiscover, SiVenmo } from 'react-icons/si';
+
+const TRANSACTION_FEE = 6.00;
+
+/* ---- Step Progress Indicator ---- */
+const StepIndicator = ({ current }) => {
+    const steps = [
+        { num: 1, label: 'Payment' },
+        { num: 2, label: 'Review' },
+        { num: 3, label: 'Done' },
+    ];
+    return (
+        <div className="pay-step-indicator">
+            {steps.map((s, i) => (
+                <React.Fragment key={s.num}>
+                    <div style={{ textAlign: 'center' }}>
+                        <div className={`pay-step-dot ${current === s.num ? 'active' : current > s.num ? 'completed' : ''}`}>
+                            {current > s.num ? '✓' : s.num}
+                        </div>
+                        <div className={`pay-step-label ${current === s.num ? 'active' : ''}`}>{s.label}</div>
+                    </div>
+                    {i < steps.length - 1 && (
+                        <div className={`pay-step-line ${current > s.num ? 'completed' : ''}`} />
+                    )}
+                </React.Fragment>
+            ))}
+        </div>
+    );
+};
+
+/* ---- Helper: format address object to string ---- */
+const formatAddress = (addr) => {
+    if (!addr) return 'N/A';
+    if (typeof addr === 'string') return addr;
+    // Handle both single address object and array
+    const a = Array.isArray(addr) ? addr[0] : addr;
+    if (!a) return 'N/A';
+    if (typeof a === 'string') return a;
+    const parts = [a.street, a.city, a.state, a.zip].filter(Boolean);
+    return parts.join(', ') || 'N/A';
+};
+
+/* ======== MAIN COMPONENT ======== */
+const Payment = () => {
+    const dispatch = useDispatch();
+    const navigate = useNavigate();
+    const { paymentMethods, fetchMethodsStatus, paymentStatus, paymentResponse } = useSelector((s) => s.payment);
+    const { accountId, currentBalance, currency, serviceAddress, fetchStatus: acctFetchStatus } = useSelector((s) => s.account);
+
+    const [step, setStep] = useState(1);
+    const [amountOption, setAmountOption] = useState('other'); // 'total' | 'other'
+    const [formData, setFormData] = useState({
+        paymentAmount: '',
+        cardName: '',
+        cardNumber: '',
+        expMonth: '',
+        expYear: '',
+        cvv: '',
+        billingFirstName: '',
+        billingLastName: '',
+        zipCode: '',
+        sameAsService: true,
+        rememberCard: true,
+        defaultCard: false,
+    });
+    const [errors, setErrors] = useState({});
+
+    // Fetch account + payment methods on mount
+    useEffect(() => {
+        if (acctFetchStatus === 'idle') dispatch(fetchAccount());
+        if (fetchMethodsStatus === 'idle') dispatch(fetchPaymentMethods());
+        return () => { dispatch(resetPaymentState()); };
+    }, [dispatch, acctFetchStatus, fetchMethodsStatus]);
+
+    // Auto-transition on success
+    useEffect(() => {
+        if (paymentStatus === 'succeeded' && step === 2) setStep(3);
+    }, [paymentStatus, step]);
+
+    // If user picks "Total Amount Due", set the amount
+    useEffect(() => {
+        if (amountOption === 'total' && currentBalance != null) {
+            setFormData((p) => ({ ...p, paymentAmount: currentBalance.toFixed(2) }));
+        }
+    }, [amountOption, currentBalance]);
+
+    const handleChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setFormData((p) => ({ ...p, [name]: type === 'checkbox' ? checked : value }));
+        if (errors[name]) setErrors((p) => ({ ...p, [name]: null }));
+    };
+
+    /* ---- VALIDATIONS ---- */
+    const validate = () => {
+        const err = {};
+        const amt = parseFloat(formData.paymentAmount);
+        if (isNaN(amt) || amt <= 0) err.paymentAmount = 'Enter a valid payment amount';
+        if (!formData.cardName.trim()) err.cardName = 'Cardholder name is required';
+        if (!/^\d{12,19}$/.test(formData.cardNumber.replace(/\s/g, ''))) err.cardNumber = 'Enter a valid 12–19 digit card number';
+        if (!formData.expMonth) err.expMonth = 'Required';
+        if (!formData.expYear) err.expYear = 'Required';
+        if (!/^\d{3,4}$/.test(formData.cvv)) err.cvv = 'Enter a valid 3 or 4 digit CVV';
+        if (!formData.billingLastName.trim()) err.billingLastName = 'Last name is required';
+        if (!/^\d{5}$/.test(formData.zipCode)) err.zipCode = 'Enter a valid 5-digit zip code';
+        setErrors(err);
+        return Object.keys(err).length === 0;
+    };
+
+    const handleNext = () => { if (validate()) setStep(2); };
+    const handleBack = () => setStep(1);
+
+    const handlePay = () => {
+        const amt = parseFloat(formData.paymentAmount) + TRANSACTION_FEE;
+        dispatch(processPayment({
+            accountId,
+            amount: amt,
+            method: 'credit_card',
+            cardNumber: formData.cardNumber,
+        }));
+    };
+
+    const maskedCard = formData.cardNumber ? `****${formData.cardNumber.replace(/\s/g, '').slice(-4)}` : '';
+    const baseAmt = parseFloat(formData.paymentAmount) || 0;
+    const totalAmt = baseAmt + TRANSACTION_FEE;
+    const primaryAddress = formatAddress(serviceAddress);
+    const today = new Date();
+
+    /* =============== STEP 1 =============== */
+    const renderStep1 = () => (
+        <>
+            {/* Payment Amount */}
+            <div className="pay-section">
+                <div className="pay-section-title">
+                    Payment Amount
+                </div>
+                <div className="pay-radio-group">
+                    <label className="pay-radio-item">
+                        <input type="radio" name="amountOption" checked={amountOption === 'total'} onChange={() => setAmountOption('total')} />
+                        <span>Total Amount Due &nbsp;<strong>{currency === 'USD' ? '$' : ''}{currentBalance?.toFixed(2) ?? '0.00'}</strong></span>
+                    </label>
+                    <label className="pay-radio-item">
+                        <input type="radio" name="amountOption" checked={amountOption === 'other'} onChange={() => setAmountOption('other')} />
+                        <span>Other</span>
+                    </label>
+                </div>
+                {amountOption === 'other' && (
+                    <div className="pay-field" style={{ marginTop: '0.75rem', maxWidth: '220px' }}>
+                        <label className="pay-label">Payment Amount <span className="required">*</span></label>
+                        <input
+                            className={`pay-input ${errors.paymentAmount ? 'error' : ''}`}
+                            type="number" name="paymentAmount" step="0.01" placeholder="0.00"
+                            value={formData.paymentAmount} onChange={handleChange}
+                        />
+                        {errors.paymentAmount && <div className="pay-error">⚠ {errors.paymentAmount}</div>}
+                    </div>
+                )}
+            </div>
+
+            {/* Payment Date */}
+            <div className="pay-section">
+                <div className="pay-section-title">
+                    Payment Date
+                </div>
+                <div className="pay-radio-group">
+                    <label className="pay-radio-item">
+                        <input type="radio" name="payDate" defaultChecked /> <span>Pay Now</span>
+                    </label>
+                    <label className="pay-radio-item" style={{ opacity: 0.5 }}>
+                        <input type="radio" name="payDate" disabled /> <span>Pay Later</span>
+                    </label>
+                </div>
+            </div>
+
+            {/* Payment Method */}
+            <div className="pay-section">
+                <div className="pay-section-title">
+                    Payment Method
+                </div>
+
+                {/* Saved card dropdown */}
+                <div className="pay-field">
+                    <select className="pay-select" defaultValue="visa">
+                        <option value="visa">VISA (****1111) (Default)</option>
+                        {paymentMethods.map((m) => (
+                            <option key={m.code} value={m.code}>{m.label}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* New Payment Method */}
+                <div style={{ border: '1px solid var(--border)', borderRadius: '10px', padding: '1rem', marginTop: '0.5rem' }}>
+                    <div className="pay-new-method-header">
+                        New Payment Method <span>−</span>
+                    </div>
+
+                    {/* Processor Icons */}
+                    <div className="pay-card-icons" style={{ marginBottom: '0.75rem', fontSize: '1.5rem', gap: '1rem' }}>
+                        <span className="pay-card-badge selected" title="Credit Card" style={{ padding: '0.5rem 1rem' }}><FaCreditCard /></span>
+                        <span className="pay-card-badge" title="Bank Transfer" style={{ padding: '0.5rem 1rem' }}><FaUniversity /></span>
+                        <span className="pay-card-badge paypal" title="PayPal" style={{ color: '#003087', padding: '0.5rem 1rem' }}><FaPaypal /></span>
+                        <span className="pay-card-badge" title="Venmo" style={{ color: '#008CFF', padding: '0.5rem 1rem', fontSize: '1.2rem' }}><SiVenmo /></span>
+                        <span className="pay-card-badge gpay" title="Google Pay" style={{ color: '#4285f4', padding: '0.5rem 1rem' }}><FaGooglePay size={28} /></span>
+                    </div>
+
+                    {/* Accepted cards */}
+                    <div className="pay-accepted-cards" style={{ fontSize: '2rem', gap: '1rem' }}>
+                        <span className="pay-accepted-label" style={{ fontSize: '0.9rem' }}>Accepted Cards</span>
+                        <SiAmericanexpress style={{ color: '#006fcf' }} />
+                        <SiVisa style={{ color: '#1a1f71', fontSize: '2.5rem' }} />
+                        <svg width="40" height="24" viewBox="0 0 40 24" style={{ display: 'inline-block' }}>
+                            <circle cx="15" cy="12" r="12" fill="#eb001b" />
+                            <circle cx="25" cy="12" r="12" fill="#f79e1b" style={{ mixBlendMode: 'multiply' }} />
+                        </svg>
+                        <SiDiscover style={{ color: '#ff6000' }} />
+                    </div>
+
+                    {/* Card Fields */}
+                    <div className="pay-new-method-body">
+                        <div className="pay-field">
+                            <label className="pay-label">Name on Card <span className="required">*</span></label>
+                            <input className={`pay-input ${errors.cardName ? 'error' : ''}`} type="text" name="cardName" placeholder="John Doe" value={formData.cardName} onChange={handleChange} />
+                            {errors.cardName && <div className="pay-error">⚠ {errors.cardName}</div>}
+                        </div>
+                        <div className="pay-field">
+                            <label className="pay-label">Card Number <span className="required">*</span></label>
+                            <input className={`pay-input ${errors.cardNumber ? 'error' : ''}`} type="text" name="cardNumber" placeholder="•••• •••• •••• ••••" maxLength="19" value={formData.cardNumber} onChange={handleChange} />
+                            {errors.cardNumber && <div className="pay-error">⚠ {errors.cardNumber}</div>}
+                        </div>
+                        <div className="pay-row">
+                            <div className="pay-field">
+                                <label className="pay-label">Month <span className="required">*</span></label>
+                                <select className={`pay-select ${errors.expMonth ? 'error' : ''}`} name="expMonth" value={formData.expMonth} onChange={handleChange}>
+                                    <option value="">Month</option>
+                                    {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map((m) => (
+                                        <option key={m} value={m}>{m}</option>
+                                    ))}
+                                </select>
+                                {errors.expMonth && <div className="pay-error">⚠ {errors.expMonth}</div>}
+                            </div>
+                            <div className="pay-field">
+                                <label className="pay-label">Year <span className="required">*</span></label>
+                                <select className={`pay-select ${errors.expYear ? 'error' : ''}`} name="expYear" value={formData.expYear} onChange={handleChange}>
+                                    <option value="">Year</option>
+                                    {[2025, 2026, 2027, 2028, 2029, 2030].map((y) => (
+                                        <option key={y} value={y}>{y}</option>
+                                    ))}
+                                </select>
+                                {errors.expYear && <div className="pay-error">⚠ {errors.expYear}</div>}
+                            </div>
+                            <div className="pay-field">
+                                <label className="pay-label">CVV <span className="required">*</span></label>
+                                <input className={`pay-input ${errors.cvv ? 'error' : ''}`} type="text" name="cvv" placeholder="•••" maxLength="4" value={formData.cvv} onChange={handleChange} />
+                                {errors.cvv && <div className="pay-error">⚠ {errors.cvv}</div>}
+                            </div>
+                        </div>
+
+                        {/* Remember + Default */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.25rem' }}>
+                            <label className="pay-checkbox-item">
+                                <input type="checkbox" name="rememberCard" checked={formData.rememberCard} onChange={handleChange} />
+                                Remember Payment Option for future use
+                            </label>
+                            <label className="pay-checkbox-item">
+                                <input type="checkbox" name="defaultCard" checked={formData.defaultCard} onChange={handleChange} />
+                                Make this my default Payment Method
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Billing Address */}
+            <div className="pay-section">
+                <div className="pay-section-title">
+                    Billing Address
+                </div>
+                <label className="pay-checkbox-item" style={{ marginBottom: '1rem' }}>
+                    <input type="checkbox" name="sameAsService" checked={formData.sameAsService} onChange={handleChange} />
+                    Same as Service Address
+                </label>
+                <div className="pay-row">
+                    <div className="pay-field">
+                        <label className="pay-label">First Name</label>
+                        <input className="pay-input" type="text" name="billingFirstName" placeholder="First Name" value={formData.billingFirstName} onChange={handleChange} />
+                    </div>
+                    <div className="pay-field">
+                        <label className="pay-label">Last Name <span className="required">*</span></label>
+                        <input className={`pay-input ${errors.billingLastName ? 'error' : ''}`} type="text" name="billingLastName" placeholder="Last Name" value={formData.billingLastName} onChange={handleChange} />
+                        {errors.billingLastName && <div className="pay-error">⚠ {errors.billingLastName}</div>}
+                    </div>
+                </div>
+                <div className="pay-field" style={{ maxWidth: '200px' }}>
+                    <label className="pay-label">Zip Code <span className="required">*</span></label>
+                    <input className={`pay-input ${errors.zipCode ? 'error' : ''}`} type="text" name="zipCode" placeholder="00000" maxLength="5" value={formData.zipCode} onChange={handleChange} />
+                    {errors.zipCode && <div className="pay-error">⚠ {errors.zipCode}</div>}
+                </div>
+            </div>
+
+            {/* Buttons */}
+            <div className="pay-btn-row right">
+                <button className="btn btn-secondary" onClick={() => navigate(-1)}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleNext}>Next</button>
+            </div>
+        </>
+    );
+
+    /* =============== STEP 2 =============== */
+    const renderStep2 = () => (
+        <>
+            <ul className="pay-summary-list">
+                <li className="pay-summary-row">
+                    <div className="pay-summary-icon"><FaGlobe /></div>
+                    <div><div className="pay-summary-label">Account Number</div><div className="pay-summary-value">{accountId}</div></div>
+                </li>
+                <li className="pay-summary-row">
+                    <div className="pay-summary-icon"><FaMapMarkerAlt /></div>
+                    <div><div className="pay-summary-label">Service Address</div><div className="pay-summary-value">{primaryAddress}</div></div>
+                </li>
+                <li className="pay-summary-row">
+                    <div className="pay-summary-icon"><FaDollarSign /></div>
+                    <div><div className="pay-summary-label">Bill Amount</div><div className="pay-summary-value">${baseAmt.toFixed(2)}</div></div>
+                </li>
+                <li className="pay-summary-row">
+                    <div className="pay-summary-icon"><FaDollarSign /></div>
+                    <div><div className="pay-summary-label">Transaction Fees</div><div className="pay-summary-value">${TRANSACTION_FEE.toFixed(2)}</div></div>
+                </li>
+                <li className="pay-summary-row">
+                    <div className="pay-summary-icon"><FaDollarSign /></div>
+                    <div><div className="pay-summary-label">Payment Amount</div><div className="pay-summary-value">${totalAmt.toFixed(2)}</div></div>
+                </li>
+                <li className="pay-summary-row">
+                    <div className="pay-summary-icon"><FaCalendarAlt /></div>
+                    <div><div className="pay-summary-label">Payment Date</div><div className="pay-summary-value">{today.toLocaleDateString('en-US', { day: '2-digit', month: 'long', year: 'numeric' })}</div></div>
+                </li>
+                <li className="pay-summary-row">
+                    <div className="pay-summary-icon"><FaCreditCard /></div>
+                    <div><div className="pay-summary-label">Payment Method</div><div className="pay-summary-value">VISA({maskedCard})</div></div>
+                </li>
+            </ul>
+
+            <div style={{ marginTop: '1.5rem' }}>
+                <div className="pay-info-note"><span className="info-icon"><FaInfoCircle /></span> There will be a $6.00 transaction fee as well as $4,000.00 limit on the transaction.</div>
+                <div className="pay-info-note"><span className="info-icon"><FaInfoCircle /></span> Please note, Bank Payments may take up to 24 to 48 hours to reflect.</div>
+            </div>
+
+            <div className="pay-btn-row">
+                <button className="btn btn-secondary" onClick={handleBack} disabled={paymentStatus === 'loading'}>Back</button>
+                <button className="btn btn-primary" onClick={handlePay} disabled={paymentStatus === 'loading'}>
+                    {paymentStatus === 'loading' ? 'Processing...' : 'Make a payment'}
+                </button>
+            </div>
+            {paymentStatus === 'failed' && <div className="pay-error" style={{ justifyContent: 'center', marginTop: '1rem' }}>⚠ Payment failed. Please try again.</div>}
+        </>
+    );
+
+    /* =============== STEP 3 =============== */
+    const renderStep3 = () => (
+        <div style={{ textAlign: 'center' }}>
+            <div className="pay-success-badge"><FaCheck /></div>
+            <h2 style={{ marginBottom: '0.5rem' }}>Payment Successful!</h2>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '2.5rem' }}>A confirmation email has been sent to your Email Address.</p>
+
+            <ul className="pay-summary-list" style={{ maxWidth: '480px', margin: '0 auto', textAlign: 'left' }}>
+                <li className="pay-summary-row">
+                    <div className="pay-summary-icon"><FaGlobe /></div>
+                    <div><div className="pay-summary-label">Account Number</div><div className="pay-summary-value">{accountId}</div></div>
+                </li>
+                <li className="pay-summary-row">
+                    <div className="pay-summary-icon"><FaMapMarkerAlt /></div>
+                    <div><div className="pay-summary-label">Service Address</div><div className="pay-summary-value">{primaryAddress}</div></div>
+                </li>
+                <li className="pay-summary-row">
+                    <div className="pay-summary-icon"><FaDollarSign /></div>
+                    <div><div className="pay-summary-label">Bill Amount</div><div className="pay-summary-value">${baseAmt.toFixed(2)}</div></div>
+                </li>
+                <li className="pay-summary-row">
+                    <div className="pay-summary-icon"><FaDollarSign /></div>
+                    <div><div className="pay-summary-label">Transaction Fees</div><div className="pay-summary-value">${TRANSACTION_FEE.toFixed(2)}</div></div>
+                </li>
+                <li className="pay-summary-row">
+                    <div className="pay-summary-icon"><FaDollarSign /></div>
+                    <div><div className="pay-summary-label">Payment Amount</div><div className="pay-summary-value">${paymentResponse?.paidAmount?.toFixed(2) ?? totalAmt.toFixed(2)}</div></div>
+                </li>
+                <li className="pay-summary-row">
+                    <div className="pay-summary-icon"><FaCalendarAlt /></div>
+                    <div><div className="pay-summary-label">Transaction Date</div><div className="pay-summary-value">{paymentResponse?.paidAt ? new Date(paymentResponse.paidAt).toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' }) : today.toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' })}</div></div>
+                </li>
+                <li className="pay-summary-row">
+                    <div className="pay-summary-icon"><FaReceipt /></div>
+                    <div><div className="pay-summary-label">Transaction ID</div><div className="pay-summary-value">{paymentResponse?.transactionId ?? 'N/A'}</div></div>
+                </li>
+                <li className="pay-summary-row">
+                    <div className="pay-summary-icon"><FaCreditCard /></div>
+                    <div><div className="pay-summary-label">Payment Method</div><div className="pay-summary-value">VISA({maskedCard})</div></div>
+                </li>
+            </ul>
+
+            <div className="pay-btn-row">
+                <button className="btn btn-secondary" onClick={() => window.print()}>Print</button>
+                <button className="btn btn-primary" onClick={() => navigate('/dashboard')}>Done</button>
+            </div>
+        </div>
+    );
+
+    /* =============== RENDER =============== */
+    return (
+        <div className="payment-container">
+            <div className="card" style={{ padding: '2rem' }}>
+                <StepIndicator current={step} />
+                {step === 1 && renderStep1()}
+                {step === 2 && renderStep2()}
+                {step === 3 && renderStep3()}
+            </div>
+        </div>
+    );
+};
+
+export default Payment;

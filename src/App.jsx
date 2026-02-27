@@ -5,6 +5,7 @@ import Dashboard from './components/Dashboard'
 import Bills from './components/Bills'
 import Services from './components/Services'
 import Profile from './components/Profile'
+import Payment from './components/Payment'
 import MainLayout from './components/MainLayout';
 import { useEffect } from 'react'
 
@@ -18,13 +19,14 @@ function App() {
     return (
         <Router basename={BASE_PATH}>
             <Routes>
-                <Route path="/login" element={!token ? <Login /> : <Navigate to="/dashboard" />} />
+                <Route path="/login" element={<Login />} />
 
                 <Route element={token ? <MainLayout /> : <Navigate to="/login" />}>
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/bills" element={<Bills />} />
                     <Route path="/services" element={<Services />} />
                     <Route path="/profile" element={<Profile />} />
+                    <Route path="/payment" element={<Payment />} />
                 </Route>
 
                 <Route path="*" element={<Navigate to={token ? "/dashboard" : "/login"} />} />

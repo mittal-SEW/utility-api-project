@@ -3,6 +3,7 @@ import { persistStore, persistReducer } from 'redux-persist'
 import storageSession from 'redux-persist/lib/storage/session' // uses sessionStorage
 import authReducer from './slices/authSlice'
 import accountReducer from './slices/accountSlice'
+import paymentReducer from './slices/paymentSlice'
 
 const persistConfig = {
     key: 'root',
@@ -15,6 +16,7 @@ export const store = configureStore({
     reducer: {
         auth: persistedAuthReducer,
         account: accountReducer,
+        payment: paymentReducer,
     },
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware({

@@ -1,16 +1,29 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { loginUser } from '../store/slices/authSlice'
+import { useNavigate } from 'react-router-dom'
+import { loginUser, logout } from '../store/slices/authSlice'
+import { clearAccount } from '../store/slices/accountSlice'
 
 const Login = () => {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const dispatch = useDispatch()
+    const navigate = useNavigate()
     const { status, error } = useSelector((state) => state.auth)
 
-    const handleSubmit = (e) => {
+    useEffect(() => {
+        dispatch(logout())
+        dispatch(clearAccount())
+    }, [dispatch])
+
+    const handleSubmit = async (e) => {
         e.preventDefault()
-        dispatch(loginUser({ username: email, password }))
+        try {
+            await dispatch(loginUser({ username: email, password })).unwrap()
+            navigate('/dashboard', { replace: true })
+        } catch (err) {
+            // error is handled by redux state
+        }
     }
 
     return (

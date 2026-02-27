@@ -1,9 +1,11 @@
 import { useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
 import { fetchAccount } from '../store/slices/accountSlice'
 
 const Dashboard = () => {
     const dispatch = useDispatch()
+    const navigate = useNavigate()
     const { fetchStatus, accountId, plan, status, meterNumber, currentBalance, currency, dueDate, serviceAddress } = useSelector((state) => state.account)
 
     useEffect(() => {
@@ -28,7 +30,7 @@ const Dashboard = () => {
                     </p>
                 </div>
                 <div>
-                    <button className="btn" style={{ backgroundColor: 'white', color: 'var(--primary)', fontWeight: 600, padding: '0.75rem 1.5rem' }}>
+                    <button className="btn" style={{ backgroundColor: 'white', color: 'var(--primary)', fontWeight: 600, padding: '0.75rem 1.5rem' }} onClick={() => navigate('/payment')}>
                         Pay Bill
                     </button>
                 </div>
@@ -46,10 +48,21 @@ const Dashboard = () => {
                 </div>
 
                 <div className="card">
-                    <h4 style={{ marginBottom: '1.25rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Service Address</h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', color: 'var(--text-main)', fontSize: '1.05rem' }}>
-                        <div>{serviceAddress?.street}</div>
-                        <div>{serviceAddress?.city}, {serviceAddress?.state} {serviceAddress?.zip}</div>
+                    <h4 style={{ marginBottom: '1.25rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Service {Array.isArray(serviceAddress) && serviceAddress.length > 1 ? 'Addresses' : 'Address'}</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', color: 'var(--text-main)', fontSize: '1.05rem' }}>
+                        {Array.isArray(serviceAddress) ? (
+                            serviceAddress.map((addr, idx) => (
+                                <div key={idx} style={{ paddingBottom: idx < serviceAddress.length - 1 ? '0.75rem' : '0', borderBottom: idx < serviceAddress.length - 1 ? '1px solid var(--border-light, #eee)' : 'none' }}>
+                                    <div>{addr?.street}</div>
+                                    <div>{addr?.city}, {addr?.state} {addr?.zip}</div>
+                                </div>
+                            ))
+                        ) : (
+                            <div>
+                                <div>{serviceAddress?.street}</div>
+                                <div>{serviceAddress?.city}, {serviceAddress?.state} {serviceAddress?.zip}</div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

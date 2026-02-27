@@ -1,18 +1,12 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '../api/api'
 
 const Bills = () => {
     const [bills, setBills] = useState([])
     const [payments, setPayments] = useState([])
     const [loading, setLoading] = useState(true)
-
-    // Payment Modal State
-    const [showPayModal, setShowPayModal] = useState(false)
-    const [paymentMethods, setPaymentMethods] = useState([])
-    const [selectedMethod, setSelectedMethod] = useState('')
-    const [paymentAmount, setPaymentAmount] = useState('')
-    const [paying, setPaying] = useState(false)
-    const [paySuccess, setPaySuccess] = useState(false)
+    const navigate = useNavigate()
 
     const fetchBillsAndPayments = async () => {
         try {
@@ -33,96 +27,14 @@ const Bills = () => {
         fetchBillsAndPayments()
     }, [])
 
-    const handleOpenPayModal = async () => {
-        setShowPayModal(true)
-        try {
-            const res = await api.get('/utility/payment/methods')
-            setPaymentMethods(res.data.methods || [])
-            if (res.data.methods?.length > 0) {
-                setSelectedMethod(res.data.methods[0].code)
-            }
-        } catch (err) {
-            console.error('Failed to load methods', err)
-        }
-    }
-
-    const handlePay = async () => {
-        setPaying(true)
-        try {
-            await api.post('/utility/payment/pay', {
-                amount: Number(paymentAmount),
-                method: selectedMethod
-            })
-            setPaySuccess(true)
-            setTimeout(() => {
-                setShowPayModal(false)
-                setPaySuccess(false)
-                setPaymentAmount('')
-                setPaying(false)
-                fetchBillsAndPayments() // Refresh data
-            }, 2000)
-        } catch (err) {
-            console.error('Payment failed', err)
-            setPaying(false)
-        }
-    }
-
     if (loading) return <div>Loading billing information...</div>
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', position: 'relative' }}>
-            {showPayModal && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                    <div className="card" style={{ width: '400px' }}>
-                        <h3 style={{ marginTop: 0 }}>Pay Bill</h3>
-                        {paySuccess ? (
-                            <div style={{ color: 'var(--success)', textAlign: 'center', padding: '2rem 0', fontWeight: 600 }}>
-                                Payment Successful!
-                            </div>
-                        ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.5rem' }}>Amount to Pay ($)</label>
-                                    <input
-                                        type="number"
-                                        value={paymentAmount}
-                                        onChange={(e) => setPaymentAmount(e.target.value)}
-                                        placeholder="0.00"
-                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', fontFamily: 'inherit' }}
-                                    />
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.5rem' }}>Payment Method</label>
-                                    <select
-                                        value={selectedMethod}
-                                        onChange={(e) => setSelectedMethod(e.target.value)}
-                                        style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', fontFamily: 'inherit', backgroundColor: 'var(--surface)' }}
-                                    >
-                                        {paymentMethods.map(m => (
-                                            <option key={m.code} value={m.code}>{m.label}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                                    <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowPayModal(false)}>Cancel</button>
-                                    <button className="btn btn-primary" style={{ flex: 1 }} onClick={handlePay} disabled={paying || !paymentAmount}>
-                                        {paying ? 'Processing...' : 'Confirm'}
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
-
             <div className="card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                     <h3 style={{ margin: 0 }}>Recent Bills</h3>
-                    <button className="btn btn-primary" onClick={handleOpenPayModal}>Pay a Bill</button>
+                    <button className="btn btn-primary" onClick={() => navigate('/payment')}>Pay a Bill</button>
                 </div>
 
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>

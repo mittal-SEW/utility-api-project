@@ -51,7 +51,10 @@ const accountSlice = createSlice({
                 state.currentBalance = action.payload.currentBalance
                 state.currency = action.payload.currency
                 state.dueDate = action.payload.dueDate
-                state.serviceAddress = action.payload.serviceAddress
+
+                // Set serviceAddress, check if payload changed it to an array
+                state.serviceAddress = action.payload.serviceAddress || action.payload.serviceAddresses || null
+
                 state.customer = action.payload.customer
             })
             .addCase(fetchAccount.rejected, (state, action) => {
