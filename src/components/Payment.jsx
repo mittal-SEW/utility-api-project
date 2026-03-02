@@ -55,13 +55,24 @@ const Payment = () => {
 
     const [step, setStep] = useState(1);
     const [amountOption, setAmountOption] = useState('other'); // 'total' | 'other'
+    const [paymentMethod, setPaymentMethod] = useState('credit_card'); // 'credit_card' | 'bank_transfer'
     const [formData, setFormData] = useState({
         paymentAmount: '',
+        // Credit Card fields
         cardName: '',
         cardNumber: '',
         expMonth: '',
         expYear: '',
         cvv: '',
+        // Bank Transfer fields
+        accountHolderName: '',
+        routingNumber: '',
+        confirmRoutingNumber: '',
+        bankName: '',
+        bankAccountNumber: '',
+        confirmBankAccountNumber: '',
+        accountType: '',
+        // Billing
         billingFirstName: '',
         billingLastName: '',
         zipCode: '',
@@ -70,6 +81,7 @@ const Payment = () => {
         defaultCard: false,
     });
     const [errors, setErrors] = useState({});
+    const [numericWarnings, setNumericWarnings] = useState({});
 
     // Fetch account + payment methods on mount
     useEffect(() => {
@@ -92,7 +104,21 @@ const Payment = () => {
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
-        setFormData((p) => ({ ...p, [name]: type === 'checkbox' ? checked : value }));
+        // Strip non-numeric characters for routing / account number fields
+        const numericOnlyFields = ['routingNumber', 'confirmRoutingNumber', 'bankAccountNumber', 'confirmBankAccountNumber'];
+        if (numericOnlyFields.includes(name)) {
+            const hasNonNumeric = /\D/.test(value);
+            const sanitized = value.replace(/\D/g, '');
+            setFormData((p) => ({ ...p, [name]: sanitized }));
+            if (hasNonNumeric) {
+                setNumericWarnings((p) => ({ ...p, [name]: 'Only numbers are allowed' }));
+                setTimeout(() => setNumericWarnings((p) => ({ ...p, [name]: null })), 2000);
+            } else {
+                setNumericWarnings((p) => ({ ...p, [name]: null }));
+            }
+        } else {
+            setFormData((p) => ({ ...p, [name]: type === 'checkbox' ? checked : value }));
+        }
         if (errors[name]) setErrors((p) => ({ ...p, [name]: null }));
     };
 
@@ -101,11 +127,25 @@ const Payment = () => {
         const err = {};
         const amt = parseFloat(formData.paymentAmount);
         if (isNaN(amt) || amt <= 0) err.paymentAmount = 'Enter a valid payment amount';
-        if (!formData.cardName.trim()) err.cardName = 'Cardholder name is required';
-        if (!/^\d{12,19}$/.test(formData.cardNumber.replace(/\s/g, ''))) err.cardNumber = 'Enter a valid 12–19 digit card number';
-        if (!formData.expMonth) err.expMonth = 'Required';
-        if (!formData.expYear) err.expYear = 'Required';
-        if (!/^\d{3,4}$/.test(formData.cvv)) err.cvv = 'Enter a valid 3 or 4 digit CVV';
+
+        if (paymentMethod === 'credit_card') {
+            if (!formData.cardName.trim()) err.cardName = 'Cardholder name is required';
+            if (!/^\d{12,19}$/.test(formData.cardNumber.replace(/\s/g, ''))) err.cardNumber = 'Enter a valid 12–19 digit card number';
+            if (!formData.expMonth) err.expMonth = 'Required';
+            if (!formData.expYear) err.expYear = 'Required';
+            if (!/^\d{3,4}$/.test(formData.cvv)) err.cvv = 'Enter a valid 3 or 4 digit CVV';
+        } else if (paymentMethod === 'bank_transfer') {
+            if (!formData.accountHolderName.trim()) err.accountHolderName = 'Account holder name is required';
+            if (!/^\d{9}$/.test(formData.routingNumber)) err.routingNumber = 'Routing number must be exactly 9 digits';
+            if (!formData.confirmRoutingNumber) err.confirmRoutingNumber = 'Please confirm your routing number';
+            else if (formData.routingNumber !== formData.confirmRoutingNumber) err.confirmRoutingNumber = 'Routing numbers do not match';
+            // bankName is auto-populated from routing number lookup (backend), skip validation
+            if (!/^\d{4,17}$/.test(formData.bankAccountNumber)) err.bankAccountNumber = 'Enter a valid account number (4–17 digits)';
+            if (!formData.confirmBankAccountNumber) err.confirmBankAccountNumber = 'Please confirm your account number';
+            else if (formData.bankAccountNumber !== formData.confirmBankAccountNumber) err.confirmBankAccountNumber = 'Account numbers do not match';
+            if (!formData.accountType) err.accountType = 'Account type is required';
+        }
+
         if (!formData.billingLastName.trim()) err.billingLastName = 'Last name is required';
         if (!/^\d{5}$/.test(formData.zipCode)) err.zipCode = 'Enter a valid 5-digit zip code';
         setErrors(err);
@@ -117,15 +157,22 @@ const Payment = () => {
 
     const handlePay = () => {
         const amt = parseFloat(formData.paymentAmount) + TRANSACTION_FEE;
-        dispatch(processPayment({
-            accountId,
-            amount: amt,
-            method: 'credit_card',
-            cardNumber: formData.cardNumber,
-        }));
+        const paymentData = { accountId, amount: amt, method: paymentMethod };
+        if (paymentMethod === 'credit_card') {
+            paymentData.cardNumber = formData.cardNumber;
+        } else if (paymentMethod === 'bank_transfer') {
+            paymentData.routingNumber = formData.routingNumber;
+            paymentData.bankAccountNumber = formData.bankAccountNumber;
+            paymentData.accountType = formData.accountType;
+        }
+        dispatch(processPayment(paymentData));
     };
 
     const maskedCard = formData.cardNumber ? `****${formData.cardNumber.replace(/\s/g, '').slice(-4)}` : '';
+    const maskedBank = formData.bankAccountNumber ? `****${formData.bankAccountNumber.slice(-4)}` : '';
+    const paymentMethodLabel = paymentMethod === 'credit_card'
+        ? `VISA(${maskedCard})`
+        : `Bank Transfer(${maskedBank})`;
     const baseAmt = parseFloat(formData.paymentAmount) || 0;
     const totalAmt = baseAmt + TRANSACTION_FEE;
     const primaryAddress = formatAddress(serviceAddress);
@@ -201,64 +248,118 @@ const Payment = () => {
 
                     {/* Processor Icons */}
                     <div className="pay-card-icons" style={{ marginBottom: '0.75rem', fontSize: '1.5rem', gap: '1rem' }}>
-                        <span className="pay-card-badge selected" title="Credit Card" style={{ padding: '0.5rem 1rem' }}><FaCreditCard /></span>
-                        <span className="pay-card-badge" title="Bank Transfer" style={{ padding: '0.5rem 1rem' }}><FaUniversity /></span>
-                        <span className="pay-card-badge paypal" title="PayPal" style={{ color: '#003087', padding: '0.5rem 1rem' }}><FaPaypal /></span>
-                        <span className="pay-card-badge" title="Venmo" style={{ color: '#008CFF', padding: '0.5rem 1rem', fontSize: '1.2rem' }}><SiVenmo /></span>
-                        <span className="pay-card-badge gpay" title="Google Pay" style={{ color: '#4285f4', padding: '0.5rem 1rem' }}><FaGooglePay size={28} /></span>
+                        <span className={`pay-card-badge ${paymentMethod === 'credit_card' ? 'selected' : ''}`} title="Credit Card" style={{ padding: '0.5rem 1rem', cursor: 'pointer' }} onClick={() => { setPaymentMethod('credit_card'); setErrors({}); }}><FaCreditCard /></span>
+                        <span className={`pay-card-badge ${paymentMethod === 'bank_transfer' ? 'selected' : ''}`} title="Bank Transfer" style={{ padding: '0.5rem 1rem', cursor: 'pointer' }} onClick={() => { setPaymentMethod('bank_transfer'); setErrors({}); }}><FaUniversity /></span>
+                        <span className="pay-card-badge" title="PayPal" style={{ color: '#003087', padding: '0.5rem 1rem', cursor: 'not-allowed', opacity: 0.5 }}><FaPaypal /></span>
+                        <span className="pay-card-badge" title="Venmo" style={{ color: '#008CFF', padding: '0.5rem 1rem', fontSize: '1.2rem', cursor: 'not-allowed', opacity: 0.5 }}><SiVenmo /></span>
+                        <span className="pay-card-badge" title="Google Pay" style={{ color: '#4285f4', padding: '0.5rem 1rem', cursor: 'not-allowed', opacity: 0.5 }}><FaGooglePay size={28} /></span>
                     </div>
 
-                    {/* Accepted cards */}
-                    <div className="pay-accepted-cards" style={{ fontSize: '2rem', gap: '1rem' }}>
-                        <span className="pay-accepted-label" style={{ fontSize: '0.9rem' }}>Accepted Cards</span>
-                        <SiAmericanexpress style={{ color: '#006fcf' }} />
-                        <SiVisa style={{ color: '#1a1f71', fontSize: '2.5rem' }} />
-                        <svg width="40" height="24" viewBox="0 0 40 24" style={{ display: 'inline-block' }}>
-                            <circle cx="15" cy="12" r="12" fill="#eb001b" />
-                            <circle cx="25" cy="12" r="12" fill="#f79e1b" style={{ mixBlendMode: 'multiply' }} />
-                        </svg>
-                        <SiDiscover style={{ color: '#ff6000' }} />
-                    </div>
+                    {/* Accepted cards — only for credit card */}
+                    {paymentMethod === 'credit_card' && (
+                        <div className="pay-accepted-cards" style={{ fontSize: '2rem', gap: '1rem' }}>
+                            <span className="pay-accepted-label" style={{ fontSize: '0.9rem' }}>Accepted Cards</span>
+                            <SiAmericanexpress style={{ color: '#006fcf' }} />
+                            <SiVisa style={{ color: '#1a1f71', fontSize: '2.5rem' }} />
+                            <svg width="40" height="24" viewBox="0 0 40 24" style={{ display: 'inline-block' }}>
+                                <circle cx="15" cy="12" r="12" fill="#eb001b" />
+                                <circle cx="25" cy="12" r="12" fill="#f79e1b" style={{ mixBlendMode: 'multiply' }} />
+                            </svg>
+                            <SiDiscover style={{ color: '#ff6000' }} />
+                        </div>
+                    )}
 
-                    {/* Card Fields */}
+                    {/* Payment Method Fields */}
                     <div className="pay-new-method-body">
-                        <div className="pay-field">
-                            <label className="pay-label">Name on Card <span className="required">*</span></label>
-                            <input className={`pay-input ${errors.cardName ? 'error' : ''}`} type="text" name="cardName" placeholder="John Doe" value={formData.cardName} onChange={handleChange} />
-                            {errors.cardName && <div className="pay-error">⚠ {errors.cardName}</div>}
-                        </div>
-                        <div className="pay-field">
-                            <label className="pay-label">Card Number <span className="required">*</span></label>
-                            <input className={`pay-input ${errors.cardNumber ? 'error' : ''}`} type="text" name="cardNumber" placeholder="•••• •••• •••• ••••" maxLength="19" value={formData.cardNumber} onChange={handleChange} />
-                            {errors.cardNumber && <div className="pay-error">⚠ {errors.cardNumber}</div>}
-                        </div>
-                        <div className="pay-row">
-                            <div className="pay-field">
-                                <label className="pay-label">Month <span className="required">*</span></label>
-                                <select className={`pay-select ${errors.expMonth ? 'error' : ''}`} name="expMonth" value={formData.expMonth} onChange={handleChange}>
-                                    <option value="">Month</option>
-                                    {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map((m) => (
-                                        <option key={m} value={m}>{m}</option>
-                                    ))}
-                                </select>
-                                {errors.expMonth && <div className="pay-error">⚠ {errors.expMonth}</div>}
-                            </div>
-                            <div className="pay-field">
-                                <label className="pay-label">Year <span className="required">*</span></label>
-                                <select className={`pay-select ${errors.expYear ? 'error' : ''}`} name="expYear" value={formData.expYear} onChange={handleChange}>
-                                    <option value="">Year</option>
-                                    {[2025, 2026, 2027, 2028, 2029, 2030].map((y) => (
-                                        <option key={y} value={y}>{y}</option>
-                                    ))}
-                                </select>
-                                {errors.expYear && <div className="pay-error">⚠ {errors.expYear}</div>}
-                            </div>
-                            <div className="pay-field">
-                                <label className="pay-label">CVV <span className="required">*</span></label>
-                                <input className={`pay-input ${errors.cvv ? 'error' : ''}`} type="text" name="cvv" placeholder="•••" maxLength="4" value={formData.cvv} onChange={handleChange} />
-                                {errors.cvv && <div className="pay-error">⚠ {errors.cvv}</div>}
-                            </div>
-                        </div>
+                        {paymentMethod === 'credit_card' && (
+                            <>
+                                <div className="pay-field">
+                                    <label className="pay-label">Name on Card <span className="required">*</span></label>
+                                    <input className={`pay-input ${errors.cardName ? 'error' : ''}`} type="text" name="cardName" placeholder="John Doe" value={formData.cardName} onChange={handleChange} />
+                                    {errors.cardName && <div className="pay-error">⚠ {errors.cardName}</div>}
+                                </div>
+                                <div className="pay-field">
+                                    <label className="pay-label">Card Number <span className="required">*</span></label>
+                                    <input className={`pay-input ${errors.cardNumber ? 'error' : ''}`} type="text" name="cardNumber" placeholder="•••• •••• •••• ••••" maxLength="19" value={formData.cardNumber} onChange={handleChange} />
+                                    {errors.cardNumber && <div className="pay-error">⚠ {errors.cardNumber}</div>}
+                                </div>
+                                <div className="pay-row">
+                                    <div className="pay-field">
+                                        <label className="pay-label">Month <span className="required">*</span></label>
+                                        <select className={`pay-select ${errors.expMonth ? 'error' : ''}`} name="expMonth" value={formData.expMonth} onChange={handleChange}>
+                                            <option value="">Month</option>
+                                            {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map((m) => (
+                                                <option key={m} value={m}>{m}</option>
+                                            ))}
+                                        </select>
+                                        {errors.expMonth && <div className="pay-error">⚠ {errors.expMonth}</div>}
+                                    </div>
+                                    <div className="pay-field">
+                                        <label className="pay-label">Year <span className="required">*</span></label>
+                                        <select className={`pay-select ${errors.expYear ? 'error' : ''}`} name="expYear" value={formData.expYear} onChange={handleChange}>
+                                            <option value="">Year</option>
+                                            {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() + i).map((y) => (
+                                                <option key={y} value={y}>{y}</option>
+                                            ))}
+                                        </select>
+                                        {errors.expYear && <div className="pay-error">⚠ {errors.expYear}</div>}
+                                    </div>
+                                    <div className="pay-field">
+                                        <label className="pay-label">CVV <span className="required">*</span></label>
+                                        <input className={`pay-input ${errors.cvv ? 'error' : ''}`} type="text" name="cvv" placeholder="•••" maxLength="4" value={formData.cvv} onChange={handleChange} />
+                                        {errors.cvv && <div className="pay-error">⚠ {errors.cvv}</div>}
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        {paymentMethod === 'bank_transfer' && (
+                            <>
+                                <div className="pay-field">
+                                    <label className="pay-label">Account Holder Name <span className="required">*</span></label>
+                                    <input className={`pay-input ${errors.accountHolderName ? 'error' : ''}`} type="text" name="accountHolderName" placeholder="Account Holder Name" value={formData.accountHolderName} onChange={handleChange} />
+                                    {errors.accountHolderName && <div className="pay-error">⚠ {errors.accountHolderName}</div>}
+                                </div>
+                                <div className="pay-field">
+                                    <label className="pay-label">Routing Number <span className="required">*</span></label>
+                                    <div style={{ position: 'relative' }}>
+                                        <input className={`pay-input ${errors.routingNumber ? 'error' : ''}`} type="password" name="routingNumber" placeholder="•••••••••" maxLength="9" inputMode="numeric" value={formData.routingNumber} onChange={handleChange} />
+                                        <FaInfoCircle style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', cursor: 'help' }} title="9-digit routing number found on your check or bank statement" />
+                                    </div>
+                                    {errors.routingNumber && <div className="pay-error">⚠ {errors.routingNumber}</div>}
+                                    {numericWarnings.routingNumber && <div className="pay-error" style={{ animation: 'fadeIn 0.2s ease' }}>⚠ {numericWarnings.routingNumber}</div>}
+                                </div>
+                                <div className="pay-field">
+                                    <label className="pay-label">Confirm Routing Number <span className="required">*</span></label>
+                                    <input className={`pay-input ${errors.confirmRoutingNumber ? 'error' : ''}`} type="text" name="confirmRoutingNumber" placeholder="Confirm Routing Number" maxLength="9" inputMode="numeric" value={formData.confirmRoutingNumber} onChange={handleChange} />
+                                    {errors.confirmRoutingNumber && <div className="pay-error">⚠ {errors.confirmRoutingNumber}</div>}
+                                    {numericWarnings.confirmRoutingNumber && <div className="pay-error" style={{ animation: 'fadeIn 0.2s ease' }}>⚠ {numericWarnings.confirmRoutingNumber}</div>}
+                                </div>
+                                <div className="pay-field">
+                                    <label className="pay-label">Bank Name <span className="required">*</span></label>
+                                    <input className="pay-input" type="text" name="bankName" placeholder="Auto-populated from Routing Number" value={formData.bankName} disabled style={{ backgroundColor: 'var(--bg-muted, #f0f0f0)', color: 'var(--text-muted, #999)', cursor: 'not-allowed' }} />
+                                </div>
+                                <div className="pay-field">
+                                    <label className="pay-label">Bank Account Number <span className="required">*</span></label>
+                                    <input className={`pay-input ${errors.bankAccountNumber ? 'error' : ''}`} type="password" name="bankAccountNumber" placeholder="Bank Account Number" maxLength="17" value={formData.bankAccountNumber} onChange={handleChange} />
+                                    {errors.bankAccountNumber && <div className="pay-error">⚠ {errors.bankAccountNumber}</div>}
+                                </div>
+                                <div className="pay-field">
+                                    <label className="pay-label">Confirm Bank Account Number <span className="required">*</span></label>
+                                    <input className={`pay-input ${errors.confirmBankAccountNumber ? 'error' : ''}`} type="text" name="confirmBankAccountNumber" placeholder="Confirm Bank Account Number" maxLength="17" value={formData.confirmBankAccountNumber} onChange={handleChange} />
+                                    {errors.confirmBankAccountNumber && <div className="pay-error">⚠ {errors.confirmBankAccountNumber}</div>}
+                                </div>
+                                <div className="pay-field">
+                                    <label className="pay-label">Account Type <span className="required">*</span></label>
+                                    <select className={`pay-select ${errors.accountType ? 'error' : ''}`} name="accountType" value={formData.accountType} onChange={handleChange}>
+                                        <option value="">Account Type</option>
+                                        <option value="checking">Checking</option>
+                                        <option value="savings">Savings</option>
+                                    </select>
+                                    {errors.accountType && <div className="pay-error">⚠ {errors.accountType}</div>}
+                                </div>
+                            </>
+                        )}
 
                         {/* Remember + Default */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.25rem' }}>
@@ -339,8 +440,8 @@ const Payment = () => {
                     <div><div className="pay-summary-label">Payment Date</div><div className="pay-summary-value">{today.toLocaleDateString('en-US', { day: '2-digit', month: 'long', year: 'numeric' })}</div></div>
                 </li>
                 <li className="pay-summary-row">
-                    <div className="pay-summary-icon"><FaCreditCard /></div>
-                    <div><div className="pay-summary-label">Payment Method</div><div className="pay-summary-value">VISA({maskedCard})</div></div>
+                    <div className="pay-summary-icon">{paymentMethod === 'credit_card' ? <FaCreditCard /> : <FaUniversity />}</div>
+                    <div><div className="pay-summary-label">Payment Method</div><div className="pay-summary-value">{paymentMethodLabel}</div></div>
                 </li>
             </ul>
 
@@ -396,8 +497,8 @@ const Payment = () => {
                     <div><div className="pay-summary-label">Transaction ID</div><div className="pay-summary-value">{paymentResponse?.transactionId ?? 'N/A'}</div></div>
                 </li>
                 <li className="pay-summary-row">
-                    <div className="pay-summary-icon"><FaCreditCard /></div>
-                    <div><div className="pay-summary-label">Payment Method</div><div className="pay-summary-value">VISA({maskedCard})</div></div>
+                    <div className="pay-summary-icon">{paymentMethod === 'credit_card' ? <FaCreditCard /> : <FaUniversity />}</div>
+                    <div><div className="pay-summary-label">Payment Method</div><div className="pay-summary-value">{paymentMethodLabel}</div></div>
                 </li>
             </ul>
 
