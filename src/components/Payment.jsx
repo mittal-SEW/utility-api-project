@@ -104,6 +104,33 @@ const Payment = () => {
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
+
+        // Auto-format card number with spaces every 4 digits
+        if (name === 'cardNumber') {
+            const digits = value.replace(/\D/g, '').slice(0, 16);
+            const formatted = digits.replace(/(\d{4})(?=\d)/g, '$1 ');
+            setFormData((p) => ({ ...p, cardNumber: formatted }));
+            if (errors[name]) setErrors((p) => ({ ...p, [name]: null }));
+            return;
+        }
+
+        // When year changes, clear month if it's now expired
+        if (name === 'expYear') {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth() + 1;
+            const selectedYear = parseInt(value);
+            setFormData((p) => {
+                const newData = { ...p, expYear: value };
+                if (selectedYear === currentYear && parseInt(p.expMonth) > 0 && parseInt(p.expMonth) < currentMonth) {
+                    newData.expMonth = '';
+                }
+                return newData;
+            });
+            if (errors[name]) setErrors((p) => ({ ...p, [name]: null }));
+            return;
+        }
+
         // Strip non-numeric characters for routing / account number fields
         const numericOnlyFields = ['routingNumber', 'confirmRoutingNumber', 'bankAccountNumber', 'confirmBankAccountNumber'];
         if (numericOnlyFields.includes(name)) {
@@ -133,6 +160,18 @@ const Payment = () => {
             if (!/^\d{12,19}$/.test(formData.cardNumber.replace(/\s/g, ''))) err.cardNumber = 'Enter a valid 12–19 digit card number';
             if (!formData.expMonth) err.expMonth = 'Required';
             if (!formData.expYear) err.expYear = 'Required';
+            // Reject expired cards
+            if (formData.expMonth && formData.expYear) {
+                const now = new Date();
+                const currentYear = now.getFullYear();
+                const currentMonth = now.getMonth() + 1;
+                const selYear = parseInt(formData.expYear);
+                const selMonth = parseInt(formData.expMonth);
+                if (selYear < currentYear || (selYear === currentYear && selMonth < currentMonth)) {
+                    err.expMonth = 'Card has expired';
+                    err.expYear = 'Card has expired';
+                }
+            }
             if (!/^\d{3,4}$/.test(formData.cvv)) err.cvv = 'Enter a valid 3 or 4 digit CVV';
         } else if (paymentMethod === 'bank_transfer') {
             if (!formData.accountHolderName.trim()) err.accountHolderName = 'Account holder name is required';
@@ -288,9 +327,17 @@ const Payment = () => {
                                         <label className="pay-label">Month <span className="required">*</span></label>
                                         <select className={`pay-select ${errors.expMonth ? 'error' : ''}`} name="expMonth" value={formData.expMonth} onChange={handleChange}>
                                             <option value="">Month</option>
-                                            {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map((m) => (
-                                                <option key={m} value={m}>{m}</option>
-                                            ))}
+                                            {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'))
+                                                .filter((m) => {
+                                                    const now = new Date();
+                                                    if (parseInt(formData.expYear) === now.getFullYear()) {
+                                                        return parseInt(m) >= now.getMonth() + 1;
+                                                    }
+                                                    return true;
+                                                })
+                                                .map((m) => (
+                                                    <option key={m} value={m}>{m}</option>
+                                                ))}
                                         </select>
                                         {errors.expMonth && <div className="pay-error">⚠ {errors.expMonth}</div>}
                                     </div>
