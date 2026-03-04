@@ -102,6 +102,36 @@ const Payment = () => {
         }
     }, [amountOption, currentBalance]);
 
+    // Clear sensitive fields when switching payment method for security reasons
+    useEffect(() => {
+        setFormData((prev) => {
+            const newData = { ...prev };
+            if (paymentMethod === 'credit_card') {
+                // Clear bank transfer fields
+                newData.accountHolderName = '';
+                newData.routingNumber = '';
+                newData.confirmRoutingNumber = '';
+                newData.bankName = '';
+                newData.bankAccountNumber = '';
+                newData.confirmBankAccountNumber = '';
+                newData.accountType = '';
+            } else if (paymentMethod === 'bank_transfer') {
+                // Clear credit card fields
+                newData.cardName = '';
+                newData.cardNumber = '';
+                newData.expMonth = '';
+                newData.expYear = '';
+                newData.cvv = '';
+            }
+            return newData;
+        });
+
+        // Also clear any related visual warnings
+        if (paymentMethod === 'credit_card') {
+            setNumericWarnings({});
+        }
+    }, [paymentMethod]);
+
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
 
