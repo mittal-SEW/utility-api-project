@@ -11,59 +11,62 @@ const SessionTimeout = () => {
     const dispatch = useDispatch()
     const [showDialog, setShowDialog] = useState(false)
     const [countdown, setCountdown] = useState(WARNING_DURATION)
-    const idleTimerRef = useRef(null)
-    const countdownIntervalRef = useRef(null)
+    const expireTimeRef = useRef(Date.now() + IDLE_TIMEOUT)
+    const logoutTimeRef = useRef(null)
 
     const handleSignOut = useCallback(() => {
-        clearAllTimers()
         setShowDialog(false)
+        expireTimeRef.current = Date.now() + IDLE_TIMEOUT // Prevent immediate re-trigger before unmount
         dispatch(logout())
         dispatch(clearAccount())
     }, [dispatch])
-
-    const clearAllTimers = () => {
-        if (idleTimerRef.current) {
-            clearTimeout(idleTimerRef.current)
-            idleTimerRef.current = null
-        }
-        if (countdownIntervalRef.current) {
-            clearInterval(countdownIntervalRef.current)
-            countdownIntervalRef.current = null
-        }
-    }
 
     const resetIdleTimer = useCallback(() => {
         // Don't reset if the warning dialog is already showing
         if (showDialog) return
 
-        clearAllTimers()
-        idleTimerRef.current = setTimeout(() => {
-            // Time's up — show the warning dialog
-            setShowDialog(true)
-            setCountdown(WARNING_DURATION)
-        }, IDLE_TIMEOUT)
+        // If the timestamp has already passed, we shouldn't reset it.
+        // This prevents physical mouse movements on laptop wakeup from artificially keeping
+        // the session alive if they've technically been asleep past the timeout.
+        if (Date.now() >= expireTimeRef.current) return
+
+        expireTimeRef.current = Date.now() + IDLE_TIMEOUT
     }, [showDialog])
 
-    // Start countdown when dialog is shown
     useEffect(() => {
-        if (!showDialog) return
+        const intervalId = setInterval(() => {
+            const now = Date.now()
 
-        countdownIntervalRef.current = setInterval(() => {
-            setCountdown((prev) => {
-                if (prev <= 1) {
-                    // Auto sign-out
-                    handleSignOut()
-                    return 0
+            if (showDialog) {
+                // Warning countdown mode
+                if (logoutTimeRef.current) {
+                    const remaining = Math.max(0, Math.ceil((logoutTimeRef.current - now) / 1000))
+                    setCountdown(remaining)
+
+                    if (remaining <= 0) {
+                        handleSignOut()
+                    }
                 }
-                return prev - 1
-            })
+            } else {
+                // Idle tracking mode
+                if (now >= expireTimeRef.current) {
+                    const sessionDeathTime = expireTimeRef.current + (WARNING_DURATION * 1000)
+
+                    if (now >= sessionDeathTime) {
+                        // The user slept through the entire warning period
+                        handleSignOut()
+                    } else {
+                        // The user slept through part of the warning period (or none at all)
+                        setShowDialog(true)
+                        const remaining = Math.max(0, Math.ceil((sessionDeathTime - now) / 1000))
+                        setCountdown(remaining)
+                        logoutTimeRef.current = sessionDeathTime
+                    }
+                }
+            }
         }, 1000)
 
-        return () => {
-            if (countdownIntervalRef.current) {
-                clearInterval(countdownIntervalRef.current)
-            }
-        }
+        return () => clearInterval(intervalId)
     }, [showDialog, handleSignOut])
 
     // Listen for user activity to reset the idle timer
@@ -76,20 +79,17 @@ const SessionTimeout = () => {
 
         return () => {
             events.forEach((event) => window.removeEventListener(event, resetIdleTimer))
-            clearAllTimers()
         }
     }, [resetIdleTimer])
 
     const handleKeepAlive = async () => {
-        clearAllTimers()
         setShowDialog(false)
+        expireTimeRef.current = Date.now() + IDLE_TIMEOUT // Restart the idle timer manually
         try {
             await api.post('/auth/refresh')
         } catch (err) {
             console.error('Failed to refresh session', err)
         }
-        // Restart the idle timer
-        resetIdleTimer()
     }
 
     if (!showDialog) return null
