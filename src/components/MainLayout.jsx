@@ -4,6 +4,7 @@ import { useDispatch } from 'react-redux';
 import { logout } from '../store/slices/authSlice';
 import { clearAccount } from '../store/slices/accountSlice';
 import SessionTimeout from './SessionTimeout';
+import SupportChat from './SupportChat';
 
 const MainLayout = () => {
     const location = useLocation();
@@ -17,6 +18,7 @@ const MainLayout = () => {
     const navItems = [
         { path: '/dashboard', label: 'Dashboard' },
         { path: '/bills', label: 'Bills & Payments' },
+        { path: '/outages', label: 'Outage Center' },
         { path: '/services', label: 'Service Center' },
         { path: '/profile', label: 'Profile' }
     ];
@@ -56,6 +58,7 @@ const MainLayout = () => {
                 </footer>
             </div>
             <SessionTimeout />
+            <SupportChat />
         </div>
     );
 };

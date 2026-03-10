@@ -6,6 +6,7 @@ import Bills from './components/Bills'
 import Services from './components/Services'
 import Profile from './components/Profile'
 import Payment from './components/Payment'
+import Outages from './components/Outages'
 import MainLayout from './components/MainLayout';
 import { useEffect } from 'react'
 
@@ -25,6 +26,7 @@ function App() {
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/bills" element={<Bills />} />
                     <Route path="/services" element={<Services />} />
+                    <Route path="/outages" element={<Outages />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/payment" element={<Payment />} />
                 </Route>
