@@ -1,14 +1,15 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../store/slices/authSlice';
-import { clearAccount } from '../store/slices/accountSlice';
+import { clearAccount, setSelectedAccount } from '../store/slices/accountSlice';
 import SessionTimeout from './SessionTimeout';
 import SupportChat from './SupportChat';
 
 const MainLayout = () => {
     const location = useLocation();
     const dispatch = useDispatch();
+    const { accountId, availableAccounts } = useSelector((s) => s.account);
 
     const handleLogout = () => {
         dispatch(logout());
@@ -42,13 +43,32 @@ const MainLayout = () => {
                 </nav>
             </aside>
             <div className="main-wrapper">
-                <header className="top-header">
-                    <div className="header-title">
-                        <h2>{navItems.find(i => location.pathname.startsWith(i.path))?.label || 'Dashboard'}</h2>
+                <header className="top-header" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                        <div className="header-title">
+                            <h2>{navItems.find(i => location.pathname.startsWith(i.path))?.label || (location.pathname.startsWith('/payment') ? 'Payment' : 'Dashboard')}</h2>
+                        </div>
+                        <div className="user-actions">
+                            <button className="btn btn-secondary" onClick={handleLogout}>Logout</button>
+                        </div>
                     </div>
-                    <div className="user-actions">
-                        <button className="btn btn-secondary" onClick={handleLogout}>Logout</button>
-                    </div>
+
+                    {/* Embedded Account Switcher for Bills & Payment */}
+                    {(location.pathname.startsWith('/bills') || location.pathname.startsWith('/payment')) && availableAccounts && availableAccounts.length > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+                            <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Account:</h3>
+                            <select
+                                className="input"
+                                value={accountId || ''}
+                                onChange={(e) => dispatch(setSelectedAccount(e.target.value))}
+                                style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-main)', color: 'var(--text-main)', minWidth: '200px', fontSize: '1rem', fontWeight: 600 }}
+                            >
+                                {availableAccounts.map(accId => (
+                                    <option key={accId} value={accId}>{accId}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
                 </header>
                 <main className="main-content">
                     <Outlet />

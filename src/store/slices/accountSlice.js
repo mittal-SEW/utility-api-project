@@ -18,6 +18,7 @@ export const fetchAccount = createAsyncThunk(
 
 const initialState = {
     accountId: null,
+    availableAccounts: [], // List of all account IDs available to the user
     plan: null,
     status: null,
     meterNumber: null,
@@ -35,6 +36,31 @@ const accountSlice = createSlice({
     initialState,
     reducers: {
         clearAccount: () => initialState,
+        addServiceAddress: (state, action) => {
+            if (Array.isArray(state.serviceAddress)) {
+                state.serviceAddress.push(action.payload);
+            } else if (state.serviceAddress) {
+                state.serviceAddress = [state.serviceAddress, action.payload];
+            } else {
+                state.serviceAddress = [action.payload];
+            }
+        },
+        editServiceAddress: (state, action) => {
+            const { id, updatedAddress } = action.payload;
+            if (Array.isArray(state.serviceAddress)) {
+                const index = state.serviceAddress.findIndex(addr => addr.id === id);
+                if (index !== -1) {
+                    state.serviceAddress[index] = { ...state.serviceAddress[index], ...updatedAddress };
+                }
+            } else if (state.serviceAddress && state.serviceAddress.id === id) {
+                state.serviceAddress = { ...state.serviceAddress, ...updatedAddress };
+            }
+        },
+        setSelectedAccount: (state, action) => {
+            state.accountId = action.payload;
+            // Note: In a real app we'd fetch details for this specific account
+            // For now, only the ID changes so the UI reflects the switch
+        }
     },
     extraReducers: (builder) => {
         builder
@@ -45,6 +71,18 @@ const accountSlice = createSlice({
             .addCase(fetchAccount.fulfilled, (state, action) => {
                 state.fetchStatus = 'succeeded'
                 state.accountId = action.payload.accountId
+
+                // Populate available accounts - simulate having multiple accounts if only one is returned
+                if (action.payload.availableAccounts) {
+                    state.availableAccounts = action.payload.availableAccounts
+                } else if (!state.availableAccounts.length) {
+                    state.availableAccounts = [
+                        action.payload.accountId,
+                        `ELEC-${Math.floor(100000 + Math.random() * 900000)}`, // Dummy account 2
+                        `ELEC-${Math.floor(100000 + Math.random() * 900000)}`  // Dummy account 3
+                    ]
+                }
+
                 state.plan = action.payload.plan
                 state.status = action.payload.status
                 state.meterNumber = action.payload.meterNumber
@@ -64,5 +102,5 @@ const accountSlice = createSlice({
     },
 })
 
-export const { clearAccount } = accountSlice.actions
+export const { clearAccount, addServiceAddress, editServiceAddress, setSelectedAccount } = accountSlice.actions
 export default accountSlice.reducer

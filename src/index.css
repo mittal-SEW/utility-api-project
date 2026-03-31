@@ -165,7 +165,7 @@ button:focus-visible {
 }
 
 .top-header {
-  height: 70px;
+  min-height: 70px;
   background-color: var(--surface);
   border-bottom: 1px solid var(--border);
   display: flex;

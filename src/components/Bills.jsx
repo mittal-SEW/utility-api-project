@@ -1,11 +1,17 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useSelector, useDispatch } from 'react-redux'
 import api from '../api/api'
+import { fetchAccount } from '../store/slices/accountSlice'
 
 const Bills = () => {
+    const dispatch = useDispatch()
+    const { accountId, fetchStatus } = useSelector((state) => state.account)
     const [bills, setBills] = useState([])
     const [payments, setPayments] = useState([])
     const [loading, setLoading] = useState(true)
+    const [startDate, setStartDate] = useState('')
+    const [endDate, setEndDate] = useState('')
     const navigate = useNavigate()
 
     const fetchBillsAndPayments = async () => {
@@ -23,18 +29,97 @@ const Bills = () => {
         }
     }
 
-    useEffect(() => {
-        fetchBillsAndPayments()
-    }, [])
 
-    if (loading) return <div>Loading billing information...</div>
+
+    useEffect(() => {
+        if (fetchStatus === 'idle') {
+            dispatch(fetchAccount())
+        }
+    }, [fetchStatus, dispatch])
+
+    useEffect(() => {
+        if (accountId) {
+            fetchBillsAndPayments()
+        }
+    }, [accountId])
+
+    if (loading || fetchStatus === 'loading') return <div>Loading billing information...</div>
+
+    // Parse a date string into a timestamp. Handles ISO dates AND period strings like "Oct 2025".
+    const parseDate = (str) => {
+        if (!str) return null;
+        const d = new Date(str);
+        return isNaN(d.getTime()) ? null : d.getTime();
+    };
+
+    // Filter helper — checks if a timestamp falls within [startDate, endDate]
+    const isInRange = (timestamp) => {
+        if (timestamp === null) return true; // if date can't be parsed, keep the row visible
+        const start = startDate ? new Date(startDate).getTime() : 0;
+        const end = endDate ? new Date(endDate).getTime() : Infinity;
+        return timestamp >= start && timestamp <= (end + 86400000);
+    };
+
+    // Bills filter by their PERIOD (the month the bill covers), NOT by dueDate.
+    // e.g. "Oct 2025" → Oct 1 2025. This way a bill for Oct 2025 won't pass a 2026 range filter.
+    const filteredBills = bills.filter(b => isInRange(parseDate(b.period)));
+    // Payments filter by the actual payment/transaction date.
+    const filteredPayments = payments.filter(p => isInRange(parseDate(p.date)));
+
+    // CSV Download Helper
+    const downloadCSV = (data, filename) => {
+        if (!data || data.length === 0) return;
+        const headers = Object.keys(data[0]).join(',');
+        const rows = data.map(obj => Object.values(obj).map(val => `"${val}"`).join(','));
+        const csvContent = [headers, ...rows].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", filename);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', position: 'relative' }}>
+            {/* Filters Row */}
+            <div className="card" style={{ padding: '1rem', display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '200px' }}>
+                    <label style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Start Date</label>
+                    <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        max={endDate ? new Date(new Date(endDate).setDate(new Date(endDate).getDate() - 1)).toISOString().split('T')[0] : undefined}
+                        className="input"
+                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border)' }}
+                    />
+                </div>
+                <div style={{ flex: 1, minWidth: '200px' }}>
+                    <label style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>End Date</label>
+                    <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        min={startDate ? new Date(new Date(startDate).setDate(new Date(startDate).getDate() + 1)).toISOString().split('T')[0] : undefined}
+                        className="input"
+                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border)' }}
+                    />
+                </div>
+            </div>
+
             <div className="card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                     <h3 style={{ margin: 0 }}>Recent Bills</h3>
-                    <button className="btn btn-primary" onClick={() => navigate('/payment')}>Pay a Bill</button>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                        <button className="btn btn-secondary" onClick={() => downloadCSV(filteredBills, 'billing_history.csv')} disabled={filteredBills.length === 0}>
+                            Download CSV
+                        </button>
+                        <button className="btn btn-primary" onClick={() => navigate('/payment')}>Pay a Bill</button>
+                    </div>
                 </div>
 
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
@@ -48,10 +133,10 @@ const Bills = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {bills.length === 0 ? (
+                        {filteredBills.length === 0 ? (
                             <tr><td colSpan="5" style={{ padding: '1rem', textAlign: 'center' }}>No bills found.</td></tr>
                         ) : (
-                            bills.map(bill => (
+                            filteredBills.map(bill => (
                                 <tr key={bill.billId} style={{ borderBottom: '1px solid var(--border)' }}>
                                     <td style={{ padding: '1rem', fontWeight: 500 }}>{bill.period}</td>
                                     <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>{bill.billId}</td>
@@ -77,7 +162,12 @@ const Bills = () => {
             </div>
 
             <div className="card">
-                <h3 style={{ marginBottom: '1.5rem', margin: 0 }}>Payment History</h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                    <h3 style={{ margin: 0 }}>Payment History</h3>
+                    <button className="btn btn-secondary" onClick={() => downloadCSV(filteredPayments, 'payment_history.csv')} disabled={filteredPayments.length === 0}>
+                        Download CSV
+                    </button>
+                </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
                         <tr style={{ borderBottom: '2px solid var(--border)' }}>
@@ -89,10 +179,10 @@ const Bills = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {payments.length === 0 ? (
+                        {filteredPayments.length === 0 ? (
                             <tr><td colSpan="5" style={{ padding: '1rem', textAlign: 'center' }}>No recent payments.</td></tr>
                         ) : (
-                            payments.map(payment => (
+                            filteredPayments.map(payment => (
                                 <tr key={payment.transactionId} style={{ borderBottom: '1px solid var(--border)' }}>
                                     <td style={{ padding: '1rem' }}>{new Date(payment.date).toLocaleDateString()}</td>
                                     <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>{payment.transactionId}</td>

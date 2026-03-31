@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { fetchAccount } from '../store/slices/accountSlice'
@@ -7,6 +7,7 @@ const Dashboard = () => {
     const dispatch = useDispatch()
     const navigate = useNavigate()
     const { fetchStatus, accountId, plan, status, meterNumber, currentBalance, currency, dueDate, serviceAddress } = useSelector((state) => state.account)
+    const [selectedAddressIndex, setSelectedAddressIndex] = useState(0)
 
     useEffect(() => {
         if (fetchStatus === 'idle') {
@@ -50,18 +51,34 @@ const Dashboard = () => {
                 <div className="card">
                     <h4 style={{ marginBottom: '1.25rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Service {Array.isArray(serviceAddress) && serviceAddress.length > 1 ? 'Addresses' : 'Address'}</h4>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', color: 'var(--text-main)', fontSize: '1.05rem' }}>
-                        {Array.isArray(serviceAddress) ? (
-                            serviceAddress.map((addr, idx) => (
-                                <div key={idx} style={{ paddingBottom: idx < serviceAddress.length - 1 ? '0.75rem' : '0', borderBottom: idx < serviceAddress.length - 1 ? '1px solid var(--border-light, #eee)' : 'none' }}>
-                                    <div>{addr?.street}</div>
-                                    <div>{addr?.city}, {addr?.state} {addr?.zip}</div>
+                        {Array.isArray(serviceAddress) && serviceAddress.length > 0 ? (
+                            <>
+                                {serviceAddress.length > 1 && (
+                                    <select
+                                        className="input"
+                                        value={selectedAddressIndex}
+                                        onChange={(e) => setSelectedAddressIndex(Number(e.target.value))}
+                                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-main)', width: '100%' }}
+                                    >
+                                        {serviceAddress.map((addr, idx) => (
+                                            <option key={idx} value={idx}>
+                                                {addr?.label || `Address ${idx + 1}`}
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
+                                <div style={{ paddingTop: '0.5rem' }}>
+                                    <div>{serviceAddress[selectedAddressIndex]?.street}</div>
+                                    <div>{serviceAddress[selectedAddressIndex]?.city}, {serviceAddress[selectedAddressIndex]?.state} {serviceAddress[selectedAddressIndex]?.zip}</div>
                                 </div>
-                            ))
-                        ) : (
+                            </>
+                        ) : serviceAddress && !Array.isArray(serviceAddress) ? (
                             <div>
                                 <div>{serviceAddress?.street}</div>
                                 <div>{serviceAddress?.city}, {serviceAddress?.state} {serviceAddress?.zip}</div>
                             </div>
+                        ) : (
+                            <div>No address available</div>
                         )}
                     </div>
                 </div>

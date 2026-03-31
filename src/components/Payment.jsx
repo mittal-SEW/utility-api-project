@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { fetchPaymentMethods, processPayment, resetPaymentState } from '../store/slices/paymentSlice';
-import { fetchAccount } from '../store/slices/accountSlice';
+import { fetchAccount, setSelectedAccount } from '../store/slices/accountSlice';
 import { FaPaypal, FaApplePay, FaGooglePay, FaAmazonPay, FaCreditCard, FaUniversity, FaGlobe, FaMapMarkerAlt, FaDollarSign, FaCalendarAlt, FaReceipt, FaCheck, FaInfoCircle } from 'react-icons/fa';
 import { SiVisa, SiAmericanexpress, SiDiscover, SiVenmo } from 'react-icons/si';
 
@@ -51,7 +51,7 @@ const Payment = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { paymentMethods, fetchMethodsStatus, paymentStatus, paymentResponse } = useSelector((s) => s.payment);
-    const { accountId, currentBalance, currency, serviceAddress, fetchStatus: acctFetchStatus } = useSelector((s) => s.account);
+    const { accountId, availableAccounts, currentBalance, currency, serviceAddress, fetchStatus: acctFetchStatus } = useSelector((s) => s.account);
 
     const [step, setStep] = useState(1);
     const [amountOption, setAmountOption] = useState('other'); // 'total' | 'other'
