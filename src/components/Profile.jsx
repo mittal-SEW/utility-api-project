@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { fetchAccount, addServiceAddress, editServiceAddress } from '../store/slices/accountSlice'
+import { Select, MenuItem } from '@mui/material'
 
 const Profile = () => {
     const dispatch = useDispatch()
@@ -61,10 +62,8 @@ const Profile = () => {
     }
 
     useEffect(() => {
-        if (fetchStatus === 'idle') {
-            dispatch(fetchAccount())
-        }
-    }, [fetchStatus, dispatch])
+        dispatch(fetchAccount())
+    }, [dispatch])
 
     if (fetchStatus === 'loading') return <div>Loading profile information...</div>
     if (!customer) return <div>Error loading profile.</div>
@@ -103,18 +102,18 @@ const Profile = () => {
                             {Array.isArray(serviceAddress) && serviceAddress.length > 0 ? (
                                 <>
                                     {serviceAddress.length > 1 && (
-                                        <select
-                                            className="input"
+                                        <Select
                                             value={selectedAddressIndex}
                                             onChange={(e) => setSelectedAddressIndex(Number(e.target.value))}
-                                            style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-main)', width: '100%' }}
+                                            sx={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-main)', width: '100%' }}
+                                            size="small"
                                         >
                                             {serviceAddress.map((addr, idx) => (
-                                                <option key={idx} value={idx}>
+                                                <MenuItem key={idx} value={idx}>
                                                     {addr?.label || `Address ${idx + 1}`}
-                                                </option>
+                                                </MenuItem>
                                             ))}
-                                        </select>
+                                        </Select>
                                     )}
                                     <div style={{ paddingTop: '0.5rem' }}>
                                         <strong>{serviceAddress[selectedAddressIndex]?.street}</strong>

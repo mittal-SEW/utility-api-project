@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
 import api from '../api/api'
 import { fetchAccount } from '../store/slices/accountSlice'
+import { TextField } from '@mui/material'
 
 const Bills = () => {
     const dispatch = useDispatch()
@@ -89,24 +90,30 @@ const Bills = () => {
             <div className="card" style={{ padding: '1rem', display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                 <div style={{ flex: 1, minWidth: '200px' }}>
                     <label style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Start Date</label>
-                    <input
+                    <TextField
                         type="date"
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
-                        max={endDate ? new Date(new Date(endDate).setDate(new Date(endDate).getDate() - 1)).toISOString().split('T')[0] : undefined}
-                        className="input"
-                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border)' }}
+                        inputProps={{
+                            max: endDate ? new Date(new Date(endDate).setDate(new Date(endDate).getDate() - 1)).toISOString().split('T')[0] : undefined
+                        }}
+                        sx={{ width: '100%' }}
+                        size="small"
+                        hiddenLabel
                     />
                 </div>
                 <div style={{ flex: 1, minWidth: '200px' }}>
                     <label style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>End Date</label>
-                    <input
+                    <TextField
                         type="date"
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
-                        min={startDate ? new Date(new Date(startDate).setDate(new Date(startDate).getDate() + 1)).toISOString().split('T')[0] : undefined}
-                        className="input"
-                        style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border)' }}
+                        inputProps={{
+                            min: startDate ? new Date(new Date(startDate).setDate(new Date(startDate).getDate() + 1)).toISOString().split('T')[0] : undefined
+                        }}
+                        sx={{ width: '100%' }}
+                        size="small"
+                        hiddenLabel
                     />
                 </div>
             </div>
