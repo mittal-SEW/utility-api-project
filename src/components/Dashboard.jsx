@@ -1,43 +1,88 @@
 import { useEffect, useState } from 'react'
-import { useDispatch } from 'react-redux'
-import { logout } from '../store/slices/authSlice'
-import api from '../api/api'
+import { useSelector, useDispatch } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
+import { fetchAccount } from '../store/slices/accountSlice'
 
 const Dashboard = () => {
     const dispatch = useDispatch()
-    const [electricityAccount, setElectricityAccount] = useState(null)
+    const navigate = useNavigate()
+    const { fetchStatus, accountId, plan, status, meterNumber, currentBalance, currency, dueDate, serviceAddress } = useSelector((state) => state.account)
+    const [selectedAddressIndex, setSelectedAddressIndex] = useState(0)
 
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const response = await api.get('/utility/electricity/account')
-                setElectricityAccount(response.data)
-            } catch (error) {
-                console.error('Failed to fetch account data', error)
-            }
+        if (fetchStatus === 'idle') {
+            dispatch(fetchAccount())
         }
+    }, [fetchStatus, dispatch])
 
-        fetchData()
-    }, [])
+    if (fetchStatus === 'loading') return <div>Loading account details...</div>
+    if (fetchStatus === 'failed' || !accountId) return <div>Error loading account details. Please try again.</div>
 
     return (
-        <div>
-            <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h1>Dashboard</h1>
-                <button onClick={() => dispatch(logout())}>Logout</button>
-            </header>
-            <main style={{ marginTop: '2rem' }}>
-                <div className="card">
-                    <h2>Your Electricity Account</h2>
-                    {electricityAccount ? (
-                        <pre style={{ textAlign: 'left', background: '#333', padding: '1rem', borderRadius: '4px', overflow: 'auto' }}>
-                            {JSON.stringify(electricityAccount, null, 2)}
-                        </pre>
-                    ) : (
-                        <p>Loading account details...</p>
-                    )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--primary)', color: 'white', border: 'none' }}>
+                <div>
+                    <h3 style={{ color: 'white', marginBottom: '0.5rem', fontWeight: 500 }}>Current Balance</h3>
+                    <div style={{ fontSize: '3rem', fontWeight: 700, lineHeight: 1 }}>
+                        {currency === 'USD' ? '$' : ''}{currentBalance?.toFixed(2)}
+                    </div>
+                    <p style={{ color: 'rgba(255,255,255,0.85)', margin: '0.5rem 0 0' }}>
+                        Due on {dueDate ? new Date(dueDate).toLocaleDateString() : '-'}
+                    </p>
                 </div>
-            </main>
+                <div>
+                    <button className="btn" style={{ backgroundColor: 'white', color: 'var(--primary)', fontWeight: 600, padding: '0.75rem 1.5rem' }} onClick={() => navigate('/payment')}>
+                        Pay Bill
+                    </button>
+                </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+                <div className="card">
+                    <h4 style={{ marginBottom: '1.25rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Account Details</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)' }}>Account ID</span> <strong>{accountId}</strong></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)' }}>Plan</span> <strong>{plan}</strong></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)' }}>Status</span> <strong style={{ color: 'var(--success)' }}>{status?.toUpperCase()}</strong></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-muted)' }}>Meter Number</span> <strong>{meterNumber}</strong></div>
+                    </div>
+                </div>
+
+                <div className="card">
+                    <h4 style={{ marginBottom: '1.25rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Service {Array.isArray(serviceAddress) && serviceAddress.length > 1 ? 'Addresses' : 'Address'}</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', color: 'var(--text-main)', fontSize: '1.05rem' }}>
+                        {Array.isArray(serviceAddress) && serviceAddress.length > 0 ? (
+                            <>
+                                {serviceAddress.length > 1 && (
+                                    <select
+                                        className="input"
+                                        value={selectedAddressIndex}
+                                        onChange={(e) => setSelectedAddressIndex(Number(e.target.value))}
+                                        style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-main)', width: '100%' }}
+                                    >
+                                        {serviceAddress.map((addr, idx) => (
+                                            <option key={idx} value={idx}>
+                                                {addr?.label || `Address ${idx + 1}`}
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
+                                <div style={{ paddingTop: '0.5rem' }}>
+                                    <div>{serviceAddress[selectedAddressIndex]?.street}</div>
+                                    <div>{serviceAddress[selectedAddressIndex]?.city}, {serviceAddress[selectedAddressIndex]?.state} {serviceAddress[selectedAddressIndex]?.zip}</div>
+                                </div>
+                            </>
+                        ) : serviceAddress && !Array.isArray(serviceAddress) ? (
+                            <div>
+                                <div>{serviceAddress?.street}</div>
+                                <div>{serviceAddress?.city}, {serviceAddress?.state} {serviceAddress?.zip}</div>
+                            </div>
+                        ) : (
+                            <div>No address available</div>
+                        )}
+                    </div>
+                </div>
+            </div>
         </div>
     )
 }
