@@ -7,6 +7,7 @@ import Services from './components/Services'
 import Profile from './components/Profile'
 import Payment from './components/Payment'
 import Outages from './components/Outages'
+import StartService from './components/StartService/StartService'
 import MainLayout from './components/MainLayout';
 import { useEffect } from 'react'
 
@@ -21,6 +22,7 @@ function App() {
         <Router basename={BASE_PATH}>
             <Routes>
                 <Route path="/login" element={<Login />} />
+                <Route path="/start-service" element={<StartService />} />
 
                 <Route element={token ? <MainLayout /> : <Navigate to="/login" />}>
                     <Route path="/dashboard" element={<Dashboard />} />

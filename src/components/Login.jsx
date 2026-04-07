@@ -72,6 +72,13 @@ const Login = () => {
                         </div>
                     )}
                 </form>
+
+                <div style={{ textAlign: 'center', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>
+                    <p style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Moving into a new home?</p>
+                    <button type="button" className="btn" style={{ backgroundColor: 'transparent', color: 'var(--primary)', border: '1px solid var(--primary)' }} onClick={() => navigate('/start-service')}>
+                        Start Service Here
+                    </button>
+                </div>
             </div>
         </div>
     )
