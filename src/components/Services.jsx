@@ -1,7 +1,10 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '../api/api'
 
 const Services = () => {
+    const navigate = useNavigate()
+
     const [readingValue, setReadingValue] = useState('')
     const [readingStatus, setReadingStatus] = useState({ loading: false, success: false, error: null })
 
@@ -36,52 +39,69 @@ const Services = () => {
     }
 
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
-            <div className="card">
-                <h3 style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Submit Meter Reading</h3>
-                <form onSubmit={submitMeterReading} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div>
-                        <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.5rem' }}>Current Reading (kWh)</label>
-                        <input
-                            type="number"
-                            required
-                            value={readingValue}
-                            onChange={(e) => setReadingValue(e.target.value)}
-                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', fontFamily: 'inherit' }}
-                        />
-                    </div>
-                    <button type="submit" className="btn btn-primary" disabled={readingStatus.loading || !readingValue}>
-                        {readingStatus.loading ? 'Submitting...' : 'Submit Reading'}
-                    </button>
-                    {readingStatus.success && <div style={{ color: 'var(--success)', fontWeight: 500, marginTop: '0.5rem' }}>Reading submitted successfully!</div>}
-                    {readingStatus.error && <div style={{ color: 'var(--danger)', fontWeight: 500, marginTop: '0.5rem' }}>{readingStatus.error}</div>}
-                </form>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            {/* Top row with two cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem' }}>
+                <div className="card">
+                    <h3 style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Submit Meter Reading</h3>
+                    <form onSubmit={submitMeterReading} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.5rem' }}>Current Reading (kWh)</label>
+                            <input
+                                type="number"
+                                required
+                                value={readingValue}
+                                onChange={(e) => setReadingValue(e.target.value)}
+                                style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', fontFamily: 'inherit' }}
+                            />
+                        </div>
+                        <button type="submit" className="btn btn-primary" disabled={readingStatus.loading || !readingValue}>
+                            {readingStatus.loading ? 'Submitting...' : 'Submit Reading'}
+                        </button>
+                        {readingStatus.success && <div style={{ color: 'var(--success)', fontWeight: 500, marginTop: '0.5rem' }}>Reading submitted successfully!</div>}
+                        {readingStatus.error && <div style={{ color: 'var(--danger)', fontWeight: 500, marginTop: '0.5rem' }}>{readingStatus.error}</div>}
+                    </form>
+                </div>
+
+                <div className="card">
+                    <h3 style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>New Service Request</h3>
+                    <form onSubmit={submitServiceRequest} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.5rem' }}>Issue Description</label>
+                            <textarea
+                                required
+                                value={serviceDesc}
+                                onChange={(e) => setServiceDesc(e.target.value)}
+                                rows={4}
+                                placeholder="Please describe the issue..."
+                                style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', fontFamily: 'inherit', resize: 'vertical' }}
+                            />
+                        </div>
+                        <button type="submit" className="btn btn-secondary" disabled={serviceStatus.loading || !serviceDesc}>
+                            {serviceStatus.loading ? 'Submitting...' : 'Submit Request'}
+                        </button>
+                        {serviceStatus.success && (
+                            <div style={{ color: 'var(--success)', fontWeight: 500, marginTop: '0.5rem' }}>
+                                Request created! Ticket ID: {ticketId}
+                            </div>
+                        )}
+                        {serviceStatus.error && <div style={{ color: 'var(--danger)', fontWeight: 500, marginTop: '0.5rem' }}>{serviceStatus.error}</div>}
+                    </form>
+                </div>
             </div>
 
-            <div className="card">
-                <h3 style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>New Service Request</h3>
-                <form onSubmit={submitServiceRequest} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div>
-                        <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.5rem' }}>Issue Description</label>
-                        <textarea
-                            required
-                            value={serviceDesc}
-                            onChange={(e) => setServiceDesc(e.target.value)}
-                            rows={4}
-                            placeholder="Please describe the issue..."
-                            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', fontFamily: 'inherit', resize: 'vertical' }}
-                        />
-                    </div>
-                    <button type="submit" className="btn btn-secondary" disabled={serviceStatus.loading || !serviceDesc}>
-                        {serviceStatus.loading ? 'Submitting...' : 'Submit Request'}
+            {/* Featured bottom card */}
+            <div className="card" style={{ padding: '3rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', alignItems: 'center', textAlign: 'center' }}>
+                    <h2 style={{ margin: 0, fontWeight: 700, color: 'var(--primary-dark)' }}>Looking to add a new property?</h2>
+                    <p style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.1rem', maxWidth: '600px' }}>
+                        If you are activating service at a brand new address or adding a secondary property to your account,
+                        you can start the registration process right now.
+                    </p>
+                    <button type="button" className="btn btn-primary" style={{ padding: '1rem 3rem', fontSize: '1.2rem', marginTop: '1rem' }} onClick={() => navigate('/start-service')}>
+                        Register New Address
                     </button>
-                    {serviceStatus.success && (
-                        <div style={{ color: 'var(--success)', fontWeight: 500, marginTop: '0.5rem' }}>
-                            Request created! Ticket ID: {ticketId}
-                        </div>
-                    )}
-                    {serviceStatus.error && <div style={{ color: 'var(--danger)', fontWeight: 500, marginTop: '0.5rem' }}>{serviceStatus.error}</div>}
-                </form>
+                </div>
             </div>
         </div>
     )
