@@ -5,7 +5,7 @@ import Dashboard from './components/Dashboard'
 import Bills from './components/Bills'
 import Services from './components/Services'
 import Profile from './components/Profile'
-// import Payment from './components/Payment'
+import Payment from './components/Payment'
 import Outages from './components/Outages'
 import StartService from './components/StartService/StartService'
 import MainLayout from './components/MainLayout';
@@ -30,7 +30,7 @@ function App() {
                     <Route path="/services" element={<Services />} />
                     <Route path="/outages" element={<Outages />} />
                     <Route path="/profile" element={<Profile />} />
-{/* <Route path="/payment" element={<Payment />} /> */}
+                    <Route path="/payment" element={<Payment />} />
                 </Route>
 
                 <Route path="*" element={<Navigate to={token ? "/dashboard" : "/login"} />} />
