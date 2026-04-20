@@ -125,7 +125,7 @@ const Bills = () => {
                         <button className="btn btn-secondary" onClick={() => downloadCSV(filteredBills, 'billing_history.csv')} disabled={filteredBills.length === 0}>
                             Download CSV
                         </button>
-                        <button className="btn btn-primary" onClick={() => navigate('/payment')}>Pay a Bill</button>
+                        <button className="btn btn-primary" style={{ opacity: 0.5, cursor: 'not-allowed' }} disabled>Pay a Bill</button>
                     </div>
                 </div>
 
