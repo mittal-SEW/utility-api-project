@@ -32,7 +32,11 @@ const Dashboard = () => {
                     </p>
                 </div>
                 <div>
-                    <button className="btn" style={{ backgroundColor: 'white', color: 'var(--primary)', fontWeight: 600, padding: '0.75rem 1.5rem' }} onClick={() => navigate('/payment')}>
+                    <button 
+                        className="btn" 
+                        style={{ backgroundColor: 'white', color: 'var(--primary)', fontWeight: 600, padding: '0.75rem 1.5rem', cursor: 'pointer' }}
+                        onClick={() => navigate('/payment')}
+                    >
                         Pay Bill
                     </button>
                 </div>
